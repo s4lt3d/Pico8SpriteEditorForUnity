@@ -5,17 +5,29 @@ public class Pico8SpriteEditor : EditorWindow
 {
     private Texture2D textureToPreview;
     private Texture2D palletTexture;
+    private Texture2D textureSizeTexture;
     private Rect textureRect;
     private Rect palletRect;
+    private Rect textureSizeRect;
+
+    private Rect sliderRect;
+    private Rect spriteSheetRect;
 
     private int palletSelection = 0;
-    private Color palletColor = Color.black; 
+    private Color palletColor = Color.black;
+
+    private int textureSize = 0;
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
     {
         var window = GetWindow<Pico8SpriteEditor>();
         window.titleContent = new GUIContent("Pico-8 Sprite Editor");
+
+        Vector2 windowSize = new Vector2(512 + 60, 256+512+30+30+30); // Example size, adjust as needed
+        window.minSize = windowSize;
+        window.maxSize = windowSize;
+
         window.Show();
     }
 
@@ -23,14 +35,18 @@ public class Pico8SpriteEditor : EditorWindow
     {
         textureToPreview = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/test.png");
         palletTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/pallet.png");
+        textureSizeTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/texturesize.png");
     }
 
     private void OnEnable()
     {
         LoadTexture();
 
-        textureRect = new Rect(50, 15, 256, 256);
-        palletRect = new Rect(256 + 50 + 15, 15, 128, 128);
+        textureRect = new Rect(30, 15, 256, 256);
+        palletRect = new Rect(256 + 30 + 15, 15, 128, 128);
+        sliderRect = new Rect(256 + 30 + 15 + 40 , 128 + 30 + 30, 140, 20);
+        textureSizeRect = new Rect(256 + 30 + 15, 128 + 30 + 24, 32, 32);
+        spriteSheetRect = new Rect(30, 256 + 30 + 30, 512, 512);
     }
 
     private void DrawThickRectangle(Vector2 position, float width, float height, float thickness, Color color)
@@ -67,11 +83,18 @@ public class Pico8SpriteEditor : EditorWindow
         if (textureToPreview != null)
         {
             DrawTexture(textureToPreview, textureRect);
+            DrawTexture(textureToPreview, spriteSheetRect);
+            
         }
 
         if (palletTexture != null)
         {
             DrawTexture(palletTexture, palletRect);
+        }
+
+        if (textureSizeTexture != null)
+        {
+            DrawTexture(textureSizeTexture, textureSizeRect);
         }
 
         Vector2 vector2 = new Vector2();
@@ -84,6 +107,9 @@ public class Pico8SpriteEditor : EditorWindow
         float thickness = 4;
 
         DrawThickRectangle(position, width, height, thickness, Color.white);
+
+        textureSize = EditorGUI.IntSlider(sliderRect, "", textureSize, 0, 3);
+
     }
 
 
@@ -151,3 +177,4 @@ public class Pico8SpriteEditor : EditorWindow
         GUI.Label(position, GUIContent.none, textureStyle);
     }
 }
+
