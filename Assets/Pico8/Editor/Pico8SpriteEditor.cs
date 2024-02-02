@@ -8,6 +8,10 @@ public class Pico8SpriteEditor : EditorWindow
     private Rect textureRect;
     private Rect palletRect;
 
+    private int palletSelection;
+
+
+
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
     {
@@ -83,7 +87,12 @@ public class Pico8SpriteEditor : EditorWindow
         }
 
 
-        Vector2 position = new Vector2(256 + 50 + 15 -2, 15-2); // X, Y position
+        Vector2 vector2 = new Vector2();
+        vector2.x = palletSelection % 4;
+        vector2.y = palletSelection / 4;
+
+
+        Vector2 position = new Vector2(256 + 50 + 15 -2 + vector2.x * 32, 15-2 + vector2.y * 32); // X, Y position
         float width = 36;
         float height = 36;
         float thickness = 4; // Thickness of the rectangle's border
@@ -105,8 +114,18 @@ public class Pico8SpriteEditor : EditorWindow
             }
             else if (palletRect.Contains(mousePos))
             {
-                Debug.Log("Clicked on palletTexture at " + mousePos);
+                
+
+                mousePos.x -= 256 + 50 + 15;
+                mousePos.y -= 15;
+                mousePos /= 32f;
+
+                palletSelection = (int)mousePos.x + (int)mousePos.y * 4;
+
+                Debug.Log("Clicked on palletTexture at " + palletSelection);
+
                 // Handle click on palletTexture
+                Repaint();
             }
         }
     }
