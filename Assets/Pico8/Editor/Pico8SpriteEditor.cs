@@ -8,9 +8,8 @@ public class Pico8SpriteEditor : EditorWindow
     private Rect textureRect;
     private Rect palletRect;
 
-    private int palletSelection;
-
-
+    private int palletSelection = 0;
+    private Color palletColor = Color.black; 
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
@@ -101,6 +100,26 @@ public class Pico8SpriteEditor : EditorWindow
         DrawThickRectangle(position, width, height, thickness, Color.white);
     }
 
+
+    private void SetPixelAndSave(int x, int y, Color c)
+    {
+        // Example: Set the pixel at (x: 2, y: 2) to red
+        textureToPreview.SetPixel(x, y, c);
+        textureToPreview.Apply(); // Apply changes to the texture
+
+        // Save texture back to file
+        byte[] bytes = textureToPreview.EncodeToPNG();
+        var path = "Assets/test.png";//EditorUtility.SaveFilePanel("Save texture as PNG", "", "modifiedTexture.png", "png");
+        if (path.Length != 0)
+        {
+            System.IO.File.WriteAllBytes(path, bytes);
+            Debug.Log($"Texture saved to: {path}");
+
+            // Refresh the AssetDatabase if the texture is within the Assets folder
+            AssetDatabase.Refresh();
+        }
+    }
+
     private void HandleMouseClicks()
     {
         Event e = Event.current;
@@ -109,8 +128,23 @@ public class Pico8SpriteEditor : EditorWindow
             Vector2 mousePos = e.mousePosition;
             if (textureRect.Contains(mousePos))
             {
-                Debug.Log("Clicked on textureToPreview at " + mousePos);
-                // Handle click on textureToPreview
+
+
+                float scaleFactor = 256.0f / 16.0f; // Or directly 16 if it's always going to be this scale
+
+                // Adjusted mouse position to account for padding/offset
+                float adjustedX = mousePos.x - 50;
+                float adjustedY = 256 - (mousePos.y - 15);
+
+                // Convert from scaled image position back to original texture coordinates
+                int originalX = (int)(adjustedX / scaleFactor);
+                int originalY = (int)(adjustedY / scaleFactor);
+
+                Debug.Log($"Clicked on textureToPreview at {originalX} {originalY}");
+
+
+
+                SetPixelAndSave(originalX, originalY, palletColor);
             }
             else if (palletRect.Contains(mousePos))
             {
@@ -121,6 +155,8 @@ public class Pico8SpriteEditor : EditorWindow
                 mousePos /= 32f;
 
                 palletSelection = (int)mousePos.x + (int)mousePos.y * 4;
+
+                palletColor = palletTexture.GetPixel((int)mousePos.x, 3 - (int)mousePos.y);
 
                 Debug.Log("Clicked on palletTexture at " + palletSelection);
 
