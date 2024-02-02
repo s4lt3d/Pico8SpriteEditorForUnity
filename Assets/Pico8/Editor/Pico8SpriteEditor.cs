@@ -9,11 +9,13 @@ public class Pico8SpriteEditor : EditorWindow
     private Texture2D textureSizeTexture;
     private Rect textureRect;
     private Rect palletRect;
+    private Rect spriteRect;
     private Rect zoomTextureRect;
     private Rect zoomSliderRect;
     private Rect spriteSheetRect;
 
     private int palletSelection = 0;
+    private int spriteSelection = 0;
     private Color palletColor = Color.black;
     private int zoomFactor = 0;
 
@@ -110,7 +112,13 @@ public class Pico8SpriteEditor : EditorWindow
 
         DrawThickRectangle(palletPosition, width, height, thickness, Color.white);
 
-        Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + vector2.x * 32, spriteSheetRect.y - 2 + vector2.y * 32); // X, Y position
+
+
+        Vector2 sprintRectVect = new Vector2();
+        sprintRectVect.x = spriteSelection % 16;
+        sprintRectVect.y = spriteSelection / 16;
+
+        Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + sprintRectVect.x * 32, spriteSheetRect.y - 2 + sprintRectVect.y * 16); // X, Y position
         DrawThickRectangle(sheetposition, width, height, thickness, Color.white);
 
         textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
@@ -152,7 +160,16 @@ public class Pico8SpriteEditor : EditorWindow
                 mousePos.y -= palletRect.y;
                 mousePos /= 32f;
                 palletSelection = (int)mousePos.x + (int)mousePos.y * (int)palletTexture.width;
-                palletColor = palletTexture.GetPixel((int)mousePos.x, (int)palletTexture.height - (int)mousePos.y - 1);                Repaint();
+                palletColor = palletTexture.GetPixel((int)mousePos.x, (int)palletTexture.height - (int)mousePos.y - 1);                
+                Repaint();
+            }
+            else if(spriteSheetRect.Contains(mousePos)) {
+                mousePos.x -= spriteSheetRect.x;
+                mousePos.y -= spriteSheetRect.y;
+                mousePos /= 32f;
+                spriteSelection = (int)mousePos.x + (int)mousePos.y * 32;
+                Repaint();
+
             }
         }
 
