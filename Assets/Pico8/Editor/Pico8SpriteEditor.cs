@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEditor;
 using System.Drawing.Printing;
+using System.Data;
 
 public class Pico8SpriteEditor : EditorWindow
 {
@@ -20,6 +21,8 @@ public class Pico8SpriteEditor : EditorWindow
     private int zoomFactor = 0;
 
     private int textureZoom = 0;
+
+    int spritesPerRow = 16;
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
@@ -44,7 +47,6 @@ public class Pico8SpriteEditor : EditorWindow
     private void OnEnable()
     {
         LoadTexture();
-
         textureRect = new Rect(30, 15, 256, 256);
         palletRect = new Rect(256 + 30 + 15, 15, 128, 128);
         zoomSliderRect = new Rect(256 + 30 + 15 + 40 , 128 + 30 + 30, 140, 20);
@@ -105,7 +107,7 @@ public class Pico8SpriteEditor : EditorWindow
         vector2.x = palletSelection % palletTexture.width;
         vector2.y = palletSelection / palletTexture.height;
 
-        Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * 32, palletRect.y- 2 + vector2.y * 32); // X, Y position
+        Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * (palletTexture.width / palletTexture.width), palletRect.y- 2 + vector2.y * (palletTexture.height / palletTexture.height)); // X, Y position
         float thickness = 4;
         float width = palletRect.width / palletTexture.width + thickness;
         float height = palletRect.height / palletTexture.height + thickness;
@@ -113,13 +115,11 @@ public class Pico8SpriteEditor : EditorWindow
 
         DrawThickRectangle(palletPosition, width, height, thickness, Color.white);
 
-
-
         Vector2 sprintRectVect = new Vector2();
-        sprintRectVect.x = spriteSelection % 16;
-        sprintRectVect.y = spriteSelection / 16;
+        sprintRectVect.x = spriteSelection % spritesPerRow;
+        sprintRectVect.y = spriteSelection / spritesPerRow;
 
-        Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + sprintRectVect.x * 32, spriteSheetRect.y - 2 + sprintRectVect.y * 16); // X, Y position
+        Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + sprintRectVect.x * spriteSheetRect.width / spritesPerRow, spriteSheetRect.y - 2 + sprintRectVect.y * spritesPerRow); // X, Y position
         DrawThickRectangle(sheetposition, width, height, thickness, Color.white);
 
         textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
