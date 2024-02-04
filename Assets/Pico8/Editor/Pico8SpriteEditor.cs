@@ -122,15 +122,15 @@ public class Pico8SpriteEditor : EditorWindow
 
     private void DrawSpriteSelection()
     {
-        float spriteSelectionWidth = spriteSheetRect.width / spritesPerRow;
-        float spriteSelectionHeight = spriteSheetRect.height / spritesPerRow; 
+        float spriteSelectionWidth =  spriteSheetRect.width / spritesPerRow;
+        float spriteSelectionHeight =  spriteSheetRect.height / spritesPerRow; 
 
         Vector2 gridPosition = GridConversion.ToVector(spriteSelection, spritesPerRow);
 
         Rect sheetPosition = new Rect(
             spriteSheetRect.x + gridPosition.x * spriteSelectionWidth,
             spriteSheetRect.y + gridPosition.y * spriteSelectionHeight,
-            spriteSelectionWidth, spriteSelectionHeight);
+            spriteSelectionWidth * (int)Mathf.Pow(2, textureZoom), spriteSelectionHeight * (int)Mathf.Pow(2, textureZoom));
 
         DrawThickRectangle(sheetPosition, selectionRectThickness, Color.white);
     }
