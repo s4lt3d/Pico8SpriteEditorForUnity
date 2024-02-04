@@ -23,6 +23,7 @@ public class Pico8SpriteEditor : EditorWindow
     private int textureZoom = 0;
 
     int spritesPerRow = 16;
+    int colorsPerRow = 4;
     int selectionRectThickness = 4;
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
@@ -43,6 +44,7 @@ public class Pico8SpriteEditor : EditorWindow
         textureToPreview = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/test.png");
         palletTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/pallet.png");
         textureSizeTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/texturesize.png");
+        colorsPerRow = palletTexture.width;
     }
 
     private void OnEnable()
@@ -55,20 +57,23 @@ public class Pico8SpriteEditor : EditorWindow
         spriteSheetRect = new Rect(30, 256 + 30 + 30, 512, 512);
     }
 
-    private void DrawThickRectangle(Vector2 position, float width, float height, float thickness, Color color)
+    private void DrawThickRectangle(Rect rectangle, float thickness, Color color)
     {
         Handles.BeginGUI();
         Handles.color = color;
-        Rect topBorderRect = new Rect(position.x, position.y, width, thickness);
-        Rect bottomBorderRect = new Rect(position.x, position.y + height - thickness, width, thickness);
-        Rect leftBorderRect = new Rect(position.x, position.y, thickness, height);
-        Rect rightBorderRect = new Rect(position.x + width - thickness, position.y, thickness, height);
+        Rect topBorderRect = new Rect(rectangle.x, rectangle.y, rectangle.width, thickness);
+        Rect bottomBorderRect = new Rect(rectangle.x, rectangle.y + rectangle.height - thickness, rectangle.width, thickness);
+        Rect leftBorderRect = new Rect(rectangle.x, rectangle.y, thickness, rectangle.height);
+        Rect rightBorderRect = new Rect(rectangle.x + rectangle.width - thickness, rectangle.y, thickness, rectangle.height);
+
         DrawSolidRectangle(topBorderRect);
         DrawSolidRectangle(bottomBorderRect);
         DrawSolidRectangle(leftBorderRect);
         DrawSolidRectangle(rightBorderRect);
+
         Handles.EndGUI();
     }
+
 
     private void DrawSolidRectangle(Rect rect)
     {
@@ -90,7 +95,14 @@ public class Pico8SpriteEditor : EditorWindow
 
         if (textureToPreview != null)
         {
-            DrawTexture(textureToPreview, textureRect, new Rect(0, 0, zoomFactor, zoomFactor));
+
+            Rect spriteRect = new Rect();
+            spriteRect.x = spriteSelection * spritesPerRow;
+            spriteRect.y = spriteSelection % spritesPerRow;
+            spriteRect.width = zoomFactor;
+            spriteRect.height = zoomFactor;
+
+            DrawTexture(textureToPreview, textureRect, spriteRect);
             DrawTexture(textureToPreview, spriteSheetRect);
         }
 
@@ -113,30 +125,36 @@ public class Pico8SpriteEditor : EditorWindow
 
     private void DrawSpriteSelection()
     {
-        float spriteSelectionWidth = palletRect.width / palletTexture.width + thickness;
-        float spriteSelectionHeight = palletRect.height / palletTexture.height + thickness;
+        float spriteSelectionWidth = spriteSheetRect.width / spritesPerRow;
+        float spriteSelectionHeight = spriteSheetRect.height / spritesPerRow; 
 
-        Vector2 sprintRectVect = new Vector2();
-        sprintRectVect.x = spriteSelection % spritesPerRow;
-        sprintRectVect.y = spriteSelection / spritesPerRow;
+        Vector2 gridPosition = GridConversion.ToVector(spriteSelection, spritesPerRow);
 
-        Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + sprintRectVect.x * spriteSheetRect.width / spritesPerRow, spriteSheetRect.y - 2 + sprintRectVect.y * spritesPerRow); // X, Y position
-        DrawThickRectangle(sheetposition, spriteSelectionWidth, spriteSelectionHeight, selectionRectThickness, Color.white);
+        Rect sheetPosition = new Rect(
+            spriteSheetRect.x + gridPosition.x * spriteSelectionWidth,
+            spriteSheetRect.y + gridPosition.y * spriteSelectionHeight,
+            spriteSelectionWidth, spriteSelectionHeight);
+
+
+        DrawThickRectangle(sheetPosition, selectionRectThickness, Color.white);
     }
 
     private void DrawPalletSelection()
     {
-        float palletSelectionWidth, palletSelectionHeight;
-        Vector2 palletSelectionScale = new Vector2();
-        palletSelectionScale.x = palletSelection % palletTexture.width;
-        palletSelectionScale.y = palletSelection / palletTexture.height;
-
-        Vector2 palletPosition = new Vector2(palletRect.x - 2 + palletSelectionScale.x * (palletRect.width / palletTexture.width), palletRect.y - 2 + palletSelectionScale.y * (palletRect.height / palletTexture.height)); // X, Y position
         
-        palletSelectionWidth = palletRect.width / palletTexture.width + selectionRectThickness;
-        palletSelectionHeight = palletRect.height / palletTexture.height + selectionRectThickness;
-        DrawThickRectangle(palletPosition, palletSelectionWidth, palletSelectionHeight, selectionRectThickness, Color.white);
+        
+        float palletSelectionWidth = palletRect.width / colorsPerRow; 
+        float palletSelectionHeight = palletRect.height / palletTexture.height;
+        Vector2 gridPosition = GridConversion.ToVector(palletSelection, colorsPerRow);
+
+        Rect palletPosition = new Rect(
+            palletRect.x + gridPosition.x * palletSelectionWidth,
+            palletRect.y + gridPosition.y * palletSelectionHeight,
+            palletSelectionWidth, palletSelectionHeight);
+
+        DrawThickRectangle(palletPosition, selectionRectThickness, Color.white);
     }
+
 
     private void SetPixel(int x, int y, Color c)
     {
@@ -161,7 +179,7 @@ public class Pico8SpriteEditor : EditorWindow
                 int originalX = (int)(adjustedX / scaleFactor);
                 int originalY = (int)(adjustedY / scaleFactor);
 
-                Debug.Log($"Clicked on textureToPreview at {originalX} {originalY}");
+
                 shouldSave = true;
                 SetPixel(originalX, textureToPreview.height - originalY - 1, palletColor);
                 Repaint();
@@ -180,7 +198,7 @@ public class Pico8SpriteEditor : EditorWindow
                 mousePos.x -= spriteSheetRect.x;
                 mousePos.y -= spriteSheetRect.y;
                 mousePos /= 32f;
-                spriteSelection = (int)mousePos.x + (int)mousePos.y * 32;
+                spriteSelection = (int)mousePos.x + (int)mousePos.y * 16;
                 Repaint();
 
             }
@@ -194,7 +212,6 @@ public class Pico8SpriteEditor : EditorWindow
                 if (path.Length != 0)
                 {
                     System.IO.File.WriteAllBytes(path, bytes);
-                    Debug.Log($"Texture saved to: {path}");
                     AssetDatabase.Refresh();
                 }
             }
@@ -226,3 +243,25 @@ public class Pico8SpriteEditor : EditorWindow
     }
 }
 
+public class GridConversion
+{
+    public static int ToIndex(int x, int y, int gridWidth)
+    {
+        return y * gridWidth + x;
+    }
+
+    public static Vector2 ToVector(int index, int gridWidth)
+    {
+        Vector2 grid = Vector2.zero;
+        grid.x = index % gridWidth;
+        grid.y = index / gridWidth; 
+        return grid;
+    }
+
+    public static Rect ToRect(int index, int gridWidth, int width=0, int height=0)
+    {
+        Vector2 v = ToVector(index, gridWidth);
+        Rect r = new Rect(v.x, v.y, width, height);
+        return r;
+    }
+}
