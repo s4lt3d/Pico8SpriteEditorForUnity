@@ -23,6 +23,7 @@ public class Pico8SpriteEditor : EditorWindow
     private int textureZoom = 0;
 
     int spritesPerRow = 16;
+    int selectionRectThickness = 4;
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
@@ -103,28 +104,39 @@ public class Pico8SpriteEditor : EditorWindow
             DrawTexture(textureSizeTexture, zoomTextureRect);
         }
 
-        Vector2 vector2 = new Vector2();
-        vector2.x = palletSelection % palletTexture.width;
-        vector2.y = palletSelection / palletTexture.height;
+        textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
 
-        Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * (palletRect.width / palletTexture.width), palletRect.y- 2 + vector2.y * (palletRect.height / palletTexture.height)); // X, Y position
-        float thickness = 4;
-        float width = palletRect.width / palletTexture.width + thickness;
-        float height = palletRect.height / palletTexture.height + thickness;
-        
+        DrawPalletSelection();
+        DrawSpriteSelection();
 
-        DrawThickRectangle(palletPosition, width, height, thickness, Color.white);
+    }
+
+    private void DrawSpriteSelection()
+    {
+        float spriteSelectionWidth = palletRect.width / palletTexture.width + thickness;
+        float spriteSelectionHeight = palletRect.height / palletTexture.height + thickness;
 
         Vector2 sprintRectVect = new Vector2();
         sprintRectVect.x = spriteSelection % spritesPerRow;
         sprintRectVect.y = spriteSelection / spritesPerRow;
 
         Vector2 sheetposition = new Vector2(spriteSheetRect.x - 2 + sprintRectVect.x * spriteSheetRect.width / spritesPerRow, spriteSheetRect.y - 2 + sprintRectVect.y * spritesPerRow); // X, Y position
-        DrawThickRectangle(sheetposition, width, height, thickness, Color.white);
-
-        textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
+        DrawThickRectangle(sheetposition, spriteSelectionWidth, spriteSelectionHeight, selectionRectThickness, Color.white);
     }
 
+    private void DrawPalletSelection()
+    {
+        float palletSelectionWidth, palletSelectionHeight;
+        Vector2 palletSelectionScale = new Vector2();
+        palletSelectionScale.x = palletSelection % palletTexture.width;
+        palletSelectionScale.y = palletSelection / palletTexture.height;
+
+        Vector2 palletPosition = new Vector2(palletRect.x - 2 + palletSelectionScale.x * (palletRect.width / palletTexture.width), palletRect.y - 2 + palletSelectionScale.y * (palletRect.height / palletTexture.height)); // X, Y position
+        
+        palletSelectionWidth = palletRect.width / palletTexture.width + selectionRectThickness;
+        palletSelectionHeight = palletRect.height / palletTexture.height + selectionRectThickness;
+        DrawThickRectangle(palletPosition, palletSelectionWidth, palletSelectionHeight, selectionRectThickness, Color.white);
+    }
 
     private void SetPixel(int x, int y, Color c)
     {
