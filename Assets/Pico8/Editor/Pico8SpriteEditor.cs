@@ -107,7 +107,7 @@ public class Pico8SpriteEditor : EditorWindow
         vector2.x = palletSelection % palletTexture.width;
         vector2.y = palletSelection / palletTexture.height;
 
-        Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * (palletTexture.width / palletTexture.width), palletRect.y- 2 + vector2.y * (palletTexture.height / palletTexture.height)); // X, Y position
+        Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * (palletRect.width / palletTexture.width), palletRect.y- 2 + vector2.y * (palletRect.height / palletTexture.height)); // X, Y position
         float thickness = 4;
         float width = palletRect.width / palletTexture.width + thickness;
         float height = palletRect.height / palletTexture.height + thickness;
