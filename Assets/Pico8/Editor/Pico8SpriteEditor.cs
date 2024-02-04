@@ -102,13 +102,14 @@ public class Pico8SpriteEditor : EditorWindow
         }
 
         Vector2 vector2 = new Vector2();
-        vector2.x = palletSelection % 4;
-        vector2.y = palletSelection / 4;
+        vector2.x = palletSelection % palletTexture.width;
+        vector2.y = palletSelection / palletTexture.height;
 
         Vector2 palletPosition = new Vector2(palletRect.x - 2 + vector2.x * 32, palletRect.y- 2 + vector2.y * 32); // X, Y position
-        float width = 36;
-        float height = 36;
         float thickness = 4;
+        float width = palletRect.width / palletTexture.width + thickness;
+        float height = palletRect.height / palletTexture.height + thickness;
+        
 
         DrawThickRectangle(palletPosition, width, height, thickness, Color.white);
 
