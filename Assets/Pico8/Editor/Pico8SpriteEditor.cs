@@ -26,6 +26,8 @@ public class Pico8SpriteEditor : EditorWindow
     int colorsPerRow = 4;
     int selectionRectThickness = 4;
 
+    private bool shouldSave = false;
+
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
     {
@@ -89,19 +91,17 @@ public class Pico8SpriteEditor : EditorWindow
 
     private void OnGUI()
     {
+        textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
+
         zoomFactor = 8 * (int)Mathf.Pow(2, textureZoom);
 
         HandleMouseClicks();
 
         if (textureToPreview != null)
         {
-
-            Rect spriteRect = new Rect();
-            spriteRect.x = spriteSelection * spritesPerRow;
-            spriteRect.y = spriteSelection % spritesPerRow;
-            spriteRect.width = zoomFactor;
-            spriteRect.height = zoomFactor;
-
+            Rect spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
+            spriteRect.x *= 8;
+            spriteRect.y *= 8;
             DrawTexture(textureToPreview, textureRect, spriteRect);
             DrawTexture(textureToPreview, spriteSheetRect);
         }
@@ -116,11 +116,8 @@ public class Pico8SpriteEditor : EditorWindow
             DrawTexture(textureSizeTexture, zoomTextureRect);
         }
 
-        textureZoom = EditorGUI.IntSlider(zoomSliderRect, "", textureZoom, 0, 3);
-
         DrawPalletSelection();
         DrawSpriteSelection();
-
     }
 
     private void DrawSpriteSelection()
@@ -135,14 +132,11 @@ public class Pico8SpriteEditor : EditorWindow
             spriteSheetRect.y + gridPosition.y * spriteSelectionHeight,
             spriteSelectionWidth, spriteSelectionHeight);
 
-
         DrawThickRectangle(sheetPosition, selectionRectThickness, Color.white);
     }
 
     private void DrawPalletSelection()
     {
-        
-        
         float palletSelectionWidth = palletRect.width / colorsPerRow; 
         float palletSelectionHeight = palletRect.height / palletTexture.height;
         Vector2 gridPosition = GridConversion.ToVector(palletSelection, colorsPerRow);
@@ -162,7 +156,7 @@ public class Pico8SpriteEditor : EditorWindow
         textureToPreview.Apply(); 
     }
 
-    bool shouldSave = false;
+    
 
     private void HandleMouseClicks()
     {
@@ -179,6 +173,12 @@ public class Pico8SpriteEditor : EditorWindow
                 int originalX = (int)(adjustedX / scaleFactor);
                 int originalY = (int)(adjustedY / scaleFactor);
 
+                Rect spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
+                spriteRect.x *= 8;
+                spriteRect.y *= 8;
+
+                originalX += (int)spriteRect.x;
+                originalY += (int)spriteRect.y;
 
                 shouldSave = true;
                 SetPixel(originalX, textureToPreview.height - originalY - 1, palletColor);
