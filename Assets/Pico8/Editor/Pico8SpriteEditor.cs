@@ -8,12 +8,29 @@ public class Pico8SpriteEditor : EditorWindow
     private Texture2D textureToPreview;
     private Texture2D palletTexture;
     private Texture2D textureSizeTexture;
+    private Texture2D brushTexture;
+    private Texture2D stampTexture;
+    private Texture2D selectTexture;
+    private Texture2D handTexture;
+    private Texture2D paintTexture;
+    private Texture2D circleTexture;
+
+
     private Rect textureRect;
     private Rect palletRect;
     private Rect spriteRect;
+    private Rect smallTextureRect; 
+    private Rect spriteNumberRect; 
     private Rect zoomTextureRect;
     private Rect zoomSliderRect;
     private Rect spriteSheetRect;
+
+    private Rect brushIconRect;
+    private Rect stampIconRect;
+    private Rect selectIconRect;
+    private Rect handIconRect;
+    private Rect paintIconRect;
+    private Rect circleIconRect;
 
     private int palletSelection = 0;
     private int spriteSelection = 0;
@@ -46,6 +63,13 @@ public class Pico8SpriteEditor : EditorWindow
         textureToPreview = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/test.png");
         palletTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/pallet.png");
         textureSizeTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/texturesize.png");
+        brushTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/brush.png"); ;
+        stampTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/stamp.png"); ;
+        selectTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/select.png"); ;
+        handTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/hand.png"); ;
+        paintTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/paint.png"); ;
+        circleTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/circle.png"); ;
+
         colorsPerRow = palletTexture.width;
     }
 
@@ -53,11 +77,24 @@ public class Pico8SpriteEditor : EditorWindow
     {
         LoadTexture();
         textureRect = new Rect(30, 15, 256, 256);
+        
+        
         palletRect = new Rect(256 + 30 + 15, 15, 128, 128);
         zoomSliderRect = new Rect(256 + 30 + 15 + 40 , 128 + 30 + 30, 140, 20);
         zoomTextureRect = new Rect(256 + 30 + 15, 128 + 30 + 24, 32, 32);
         spriteSheetRect = new Rect(30, 256 + 30 + 30, 512, 512);
-    }
+
+
+        smallTextureRect = new Rect(256 + 20, 256 + 21, 32, 32);
+        spriteNumberRect = new Rect(256 + 20 + 32, 256 + 22, 64, 36);
+        brushIconRect = new Rect(30, 256 + 21, 32, 32);
+        stampIconRect = new Rect(30 + 40 * 1, 256 + 21, 32, 32);
+        selectIconRect = new Rect(30 + 40 * 2, 256 + 21, 32, 32);
+        handIconRect = new Rect(30 + 40 * 3, 256 + 21, 32, 32);
+        paintIconRect = new Rect(30 + 40 * 4, 256 + 21, 32, 32);
+        circleIconRect = new Rect(30 + 40 * 5, 256 + 21, 32, 32);
+
+}
 
     private void DrawThickRectangle(Rect rectangle, float thickness, Color color)
     {
@@ -97,13 +134,32 @@ public class Pico8SpriteEditor : EditorWindow
 
         HandleMouseClicks();
 
+        DrawThickRectangle(textureRect, 1, Color.black);
+
         if (textureToPreview != null)
         {
             Rect spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
             spriteRect.x *= 8;
             spriteRect.y *= 8;
             DrawTexture(textureToPreview, textureRect, spriteRect);
+            DrawTexture(textureToPreview, smallTextureRect, spriteRect);
             DrawTexture(textureToPreview, spriteSheetRect);
+            DrawTexture(brushTexture, brushIconRect);
+            DrawTexture(stampTexture, stampIconRect);
+            DrawTexture(selectTexture, selectIconRect);
+            DrawTexture(handTexture, handIconRect);
+            DrawTexture(paintTexture, paintIconRect);
+            DrawTexture(circleTexture, circleIconRect);
+
+            GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+            labelStyle.fontSize = 24; // Example: Change font size
+            labelStyle.normal.textColor = Color.gray; // Example: Change text color
+            labelStyle.fontStyle = FontStyle.Bold;
+            labelStyle.alignment = TextAnchor.MiddleLeft; // Example: Center the text
+
+            // Draw the label with the custom style
+            GUI.Label(spriteNumberRect, spriteSelection.ToString("000"), labelStyle);
+            
         }
 
         if (palletTexture != null)
@@ -191,7 +247,9 @@ public class Pico8SpriteEditor : EditorWindow
                 mousePos.y -= palletRect.y;
                 mousePos /= 32f;
                 palletSelection = (int)mousePos.x + (int)mousePos.y * (int)palletTexture.width;
-                palletColor = palletTexture.GetPixel((int)mousePos.x, (int)palletTexture.height - (int)mousePos.y - 1);                
+                palletColor = palletTexture.GetPixel((int)mousePos.x, (int)palletTexture.height - (int)mousePos.y - 1);
+                if (palletColor == Color.black)
+                    palletColor = new Color(0, 0, 0, 0);
                 Repaint();
             }
             else if(spriteSheetRect.Contains(mousePos)) {
