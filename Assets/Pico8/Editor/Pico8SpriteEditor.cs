@@ -1,48 +1,79 @@
-using UnityEngine;
+using System.IO;
 using UnityEditor;
-using System.Drawing.Printing;
-using System.Data;
+using UnityEngine;
+
+enum Pico9SpriteEditorState
+{
+    Brush,
+    Stamp,
+    Select,
+    Hand,
+    Paint,
+    Circle
+}  
 
 public class Pico8SpriteEditor : EditorWindow
 {
-    private Texture2D spriteSheetTexture;
-    private Texture2D palletTexture;
-    private Texture2D zoomIconTexture;
-    private Texture2D brushTexture;
-    private Texture2D stampTexture;
-    private Texture2D selectTexture;
-    private Texture2D handTexture;
-    private Texture2D paintTexture;
-    private Texture2D circleTexture;
+    private readonly int selectionRectThickness = 4;
 
-    private Rect textureRect;
-    private Rect palletRect;
-    private Rect spriteRect;
-    private Rect smallTextureRect;
-    private Rect spriteNumberRect;
-    private Rect zoomTextureRect;
-    private Rect zoomSliderRect;
-    private Rect spriteSheetRect;
+    private readonly int spritesPerRow = 16;
 
     private Rect brushIconRect;
-    private Rect stampIconRect;
-    private Rect selectIconRect;
-    private Rect handIconRect;
-    private Rect paintIconRect;
+    private Texture2D brushTexture;
     private Rect circleIconRect;
-
-    private int palletSelection = 0;
-    private int spriteSelection = 0;
+    private Texture2D circleTexture;
+    private int colorsPerRow = 4;
+    private Rect handIconRect;
+    private Texture2D handTexture;
+    private Rect paintIconRect;
+    private Texture2D paintTexture;
     private Color palletColor = Color.black;
-    private int zoomFactor = 0;
+    private Rect palletRect;
 
-    private int textureZoom = 0;
+    private int palletSelection;
+    private Texture2D palletTexture;
+    private Rect selectIconRect;
+    private Texture2D selectTexture;
 
-    int spritesPerRow = 16;
-    int colorsPerRow = 4;
-    int selectionRectThickness = 4;
+    private bool shouldSave;
+    private Rect smallTextureRect;
+    private Rect spriteNumberRect;
+    private Rect spriteRect;
+    private int spriteSelection;
+    private Rect spriteSheetRect;
+    private Texture2D spriteSheetTexture;
+    private Rect stampIconRect;
+    private Texture2D stampTexture;
 
-    private bool shouldSave = false;
+    private Rect textureRect;
+
+    private int textureZoom;
+    private int zoomFactor;
+    private Texture2D zoomIconTexture;
+    private Rect zoomSliderRect;
+    private Rect zoomTextureRect;
+    
+    private Pico9SpriteEditorState toolState;
+
+    private void OnEnable()
+    {
+        Initialize();
+    }
+
+    private void OnGUI()
+    {
+        HandleUserInput();
+
+        DrawSpriteEditView();
+
+        DrawToolBar();
+
+        DrawPallet();
+
+        DrawZoomSlider();
+
+        DrawSpriteLargeSheet();
+    }
 
     [MenuItem("Tools/Pico-8 Palette Tool")]
     private static void ShowWindow()
@@ -50,16 +81,30 @@ public class Pico8SpriteEditor : EditorWindow
         var window = GetWindow<Pico8SpriteEditor>();
         window.titleContent = new GUIContent("Pico-8 Sprite Editor");
 
-        Vector2 windowSize = new Vector2(512 + 60, 256 + 512 + 30 + 30 + 30); // Example size, adjust as needed
+        var windowSize = new Vector2(512 + 60, 256 + 512 + 30 + 30 + 30); // Example size, adjust as needed
         window.minSize = windowSize;
         window.maxSize = windowSize;
 
         window.Show();
     }
 
-    void Initialize()
+    private void Initialize()
     {
         spriteSheetTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/test.png");
+        if (spriteSheetTexture == null)
+        {
+            spriteSheetTexture = new Texture2D(128, 128);
+            var bytes = spriteSheetTexture.EncodeToPNG();
+            var path = "Assets/test.png";
+            if (path.Length != 0)
+            {
+                File.WriteAllBytes(path, bytes);
+                AssetDatabase.Refresh();
+            }
+
+            spriteSheetTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/test.png");
+        }
+
         palletTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/pallet.png");
         zoomIconTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/texturesize.png");
         brushTexture = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Pico8/brush.png");
@@ -88,19 +133,16 @@ public class Pico8SpriteEditor : EditorWindow
         circleIconRect = new Rect(30 + 40 * 5, 256 + 21, 32, 32);
     }
 
-    private void OnEnable()
-    {
-        Initialize();
-    }
-
     private void DrawRectangle(Rect rectangle, float thickness, Color color)
     {
         Handles.BeginGUI();
         Handles.color = color;
-        Rect topBorderRect = new Rect(rectangle.x, rectangle.y, rectangle.width, thickness);
-        Rect bottomBorderRect = new Rect(rectangle.x, rectangle.y + rectangle.height - thickness, rectangle.width, thickness);
-        Rect leftBorderRect = new Rect(rectangle.x, rectangle.y, thickness, rectangle.height);
-        Rect rightBorderRect = new Rect(rectangle.x + rectangle.width - thickness, rectangle.y, thickness, rectangle.height);
+        var topBorderRect = new Rect(rectangle.x, rectangle.y, rectangle.width, thickness);
+        var bottomBorderRect = new Rect(rectangle.x, rectangle.y + rectangle.height - thickness, rectangle.width,
+            thickness);
+        var leftBorderRect = new Rect(rectangle.x, rectangle.y, thickness, rectangle.height);
+        var rightBorderRect = new Rect(rectangle.x + rectangle.width - thickness, rectangle.y, thickness,
+            rectangle.height);
 
         DrawSolidRectangle(topBorderRect);
         DrawSolidRectangle(bottomBorderRect);
@@ -113,34 +155,20 @@ public class Pico8SpriteEditor : EditorWindow
 
     private void DrawSolidRectangle(Rect rect)
     {
-        Vector3[] rectangleCorners = {
-            new Vector3(rect.x, rect.y, 0),
-            new Vector3(rect.x + rect.width, rect.y, 0),
-            new Vector3(rect.x + rect.width, rect.y + rect.height, 0),
-            new Vector3(rect.x, rect.y + rect.height, 0)
+        Vector3[] rectangleCorners =
+        {
+            new(rect.x, rect.y, 0),
+            new(rect.x + rect.width, rect.y, 0),
+            new(rect.x + rect.width, rect.y + rect.height, 0),
+            new(rect.x, rect.y + rect.height, 0)
         };
 
         Handles.DrawSolidRectangleWithOutline(rectangleCorners, Handles.color, Color.clear);
     }
 
-    private void OnGUI()
-    {
-        HandleUserInput();
-
-        DrawSpriteEditView();
-
-        DrawTools();
-
-        DrawPallet();
-
-        DrawZoomSlider();
-
-        DrawSpriteLargeSheet();
-    }
-
     private void DrawSpriteLargeSheet()
     {
-        DrawTexture(spriteSheetTexture, spriteSheetRect, false);
+        DrawTexture(spriteSheetTexture, spriteSheetRect);
 
 
         DrawSpriteSelection();
@@ -153,8 +181,6 @@ public class Pico8SpriteEditor : EditorWindow
         zoomFactor = 8 * (int)Mathf.Pow(2, textureZoom);
 
         DrawTexture(zoomIconTexture, zoomTextureRect);
-
-        
     }
 
     private void DrawPallet()
@@ -163,20 +189,19 @@ public class Pico8SpriteEditor : EditorWindow
         DrawPalletSelection();
     }
 
-    private void DrawTools()
+    private void DrawToolBar()
     {
-        DrawTexture(brushTexture, brushIconRect, false);
+        DrawTexture(brushTexture, brushIconRect);
         DrawTexture(stampTexture, stampIconRect, true);
         DrawTexture(selectTexture, selectIconRect, true);
         DrawTexture(handTexture, handIconRect, true);
         DrawTexture(paintTexture, paintIconRect, true);
         DrawTexture(circleTexture, circleIconRect, true);
 
-
         // draw tiny preview 
         DrawTexture(spriteSheetTexture, smallTextureRect, false, spriteRect);
         // Draw sprite number next to tiny preview
-        GUIStyle labelStyle = new GUIStyle(GUI.skin.label);
+        var labelStyle = new GUIStyle(GUI.skin.label);
         labelStyle.fontSize = 24;
         labelStyle.normal.textColor = Color.gray;
         labelStyle.fontStyle = FontStyle.Bold;
@@ -188,7 +213,7 @@ public class Pico8SpriteEditor : EditorWindow
     {
         // draw sprite in main window
         DrawTexture(spriteSheetTexture, textureRect, false, spriteRect);
-        
+
         // draw outline for sprite
         DrawRectangle(textureRect, 1, Color.black);
     }
@@ -199,72 +224,134 @@ public class Pico8SpriteEditor : EditorWindow
         spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
         spriteRect.x *= 8;
         spriteRect.y *= 8;
+    
+        var e = Event.current;
 
-        Event e = Event.current;
         if ((e.type == EventType.MouseDown || e.type == EventType.MouseDrag) && e.button == 0)
         {
+            var mousePos = e.mousePosition;
+            
+            HandleToolStateChange(mousePos);
 
-            Vector2 mousePos = e.mousePosition;
             if (textureRect.Contains(mousePos))
-            {
-                float scaleFactor = textureRect.width / zoomFactor;
-
-                float adjustedX = mousePos.x - textureRect.x;
-                float adjustedY = (mousePos.y - textureRect.y);
-                int originalX = (int)(adjustedX / scaleFactor);
-                int originalY = (int)(adjustedY / scaleFactor);
-
-                Rect spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
-                spriteRect.x *= 8;
-                spriteRect.y *= 8;
-
-                originalX += (int)spriteRect.x;
-                originalY += (int)spriteRect.y;
-
-                shouldSave = true;
-                SetPixel(spriteSheetTexture, originalX, spriteSheetTexture.height - originalY - 1, palletColor);
-                Repaint();
-
-
-
-            }
+                HandleToolState(mousePos);
             else if (palletRect.Contains(mousePos))
-            {
-                mousePos.x -= palletRect.x;
-                mousePos.y -= palletRect.y;
-                mousePos /= 32f;
-                palletSelection = (int)mousePos.x + (int)mousePos.y * (int)palletTexture.width;
-                palletColor = palletTexture.GetPixel((int)mousePos.x, (int)palletTexture.height - (int)mousePos.y - 1);
-                if (palletColor == Color.black)
-                    palletColor = new Color(0, 0, 0, 0);
-                Repaint();
-            }
+                HandlePalletSelection(mousePos);
             else if (spriteSheetRect.Contains(mousePos))
-            {
-                mousePos.x -= spriteSheetRect.x;
-                mousePos.y -= spriteSheetRect.y;
-                mousePos /= 32f;
-                spriteSelection = (int)mousePos.x + (int)mousePos.y * 16;
-                Repaint();
-
-            }
+                HandleDrawSpriteSheet(mousePos);
         }
+    
+        if (e.type == EventType.MouseLeaveWindow || e.type == EventType.MouseUp)
+            SaveSpriteSheet();
+    }
 
-        if ((e.type == EventType.MouseLeaveWindow || e.type == EventType.MouseUp))
+    private void HandleToolState(Vector2 mousePos)
+    {
+        switch (toolState)
         {
-            if (shouldSave)
-            {
-                byte[] bytes = spriteSheetTexture.EncodeToPNG();
-                var path = "Assets/test.png";
-                if (path.Length != 0)
-                {
-                    System.IO.File.WriteAllBytes(path, bytes);
-                    AssetDatabase.Refresh();
-                }
-            }
+            case Pico9SpriteEditorState.Brush:
+                HandleBrushSprite(mousePos);
+                break;
+            case Pico9SpriteEditorState.Stamp:
+                break;
+            case Pico9SpriteEditorState.Select:
+                break;
+            case Pico9SpriteEditorState.Hand:
+                break;
+            case Pico9SpriteEditorState.Paint:
+                HandlePaintSprite(mousePos);
+                break;
+            case Pico9SpriteEditorState.Circle:
+                break;
         }
     }
 
+
+    private void HandleToolStateChange(Vector2 mousePos)
+    {
+        if(stampIconRect.Contains(mousePos))    
+            toolState = Pico9SpriteEditorState.Stamp;
+        else if(selectIconRect.Contains(mousePos))
+            toolState = Pico9SpriteEditorState.Select;
+        else if(handIconRect.Contains(mousePos))
+            toolState = Pico9SpriteEditorState.Hand;
+        else if(paintIconRect.Contains(mousePos))
+            toolState = Pico9SpriteEditorState.Paint;
+        else if(circleIconRect.Contains(mousePos))
+            toolState = Pico9SpriteEditorState.Circle;
+        else
+            toolState = Pico9SpriteEditorState.Brush;
+    }
+    
+    private void HandlePaintSprite(Vector2 mousePos)
+    {
+        throw new System.NotImplementedException();
+    }
+    
+    private Vector2Int MousePosToSpritePos(Vector2 mousePos){
+        var scaleFactor = textureRect.width / zoomFactor;
+        var adjustedX = mousePos.x - textureRect.x;
+        var adjustedY = mousePos.y - textureRect.y;
+        var originalX = (int)(adjustedX / scaleFactor);
+        var originalY = (int)(adjustedY / scaleFactor);
+        var spriteRect = GridConversion.ToRect(spriteSelection, spritesPerRow, zoomFactor, zoomFactor);
+        spriteRect.x *= 8;
+        spriteRect.y *= 8;
+        originalX += (int)spriteRect.x;
+        originalY += (int)spriteRect.y;
+        return new Vector2Int(originalX, originalY);
+    }
+
+    private void SetPixelOnSprite(Texture2D spriteSheetTexture, int originalX, int originalY, Color palletColor){
+        shouldSave = true;
+        SetPixel(spriteSheetTexture, originalX, spriteSheetTexture.height - originalY - 1, palletColor);
+        Repaint();
+    }
+
+    private void HandleBrushSprite(Vector2 mousePos)
+    {
+        var spriteCoordinate = MousePosToSpritePos(mousePos);
+        SetPixelOnSprite(spriteSheetTexture, spriteCoordinate.x, spriteCoordinate.y, palletColor);
+    }
+    
+    private void HandlePalletSelection(Vector2 mousePos)
+    {
+        mousePos.x -= palletRect.x;
+        mousePos.y -= palletRect.y;
+        mousePos /= 32f;
+        palletSelection = (int)mousePos.x + (int)mousePos.y * palletTexture.width;
+        palletColor = palletTexture.GetPixel((int)mousePos.x, palletTexture.height - (int)mousePos.y - 1);
+
+        if (palletColor == Color.black)
+            palletColor = new Color(0, 0, 0, 0);
+
+        Repaint();
+    }
+    
+    private void HandleDrawSpriteSheet(Vector2 mousePos)
+    {
+        mousePos.x -= spriteSheetRect.x;
+        mousePos.y -= spriteSheetRect.y;
+        mousePos /= 32f;
+        spriteSelection = (int)mousePos.x + (int)mousePos.y * 16;
+        Repaint();
+    }
+    
+    private void SaveSpriteSheet()
+    {
+        if(!shouldSave)
+            return;
+
+        var bytes = spriteSheetTexture.EncodeToPNG();
+        var path = "Assets/test.png";
+
+        if (path.Length != 0)
+        {
+            File.WriteAllBytes(path, bytes);
+            AssetDatabase.Refresh();
+        }
+    }
+    
     private void SetPixel(Texture2D texture, int x, int y, Color c)
     {
         texture.SetPixel(x, y, c);
@@ -273,26 +360,27 @@ public class Pico8SpriteEditor : EditorWindow
 
     private void DrawSpriteSelection()
     {
-        float spriteSelectionWidth = spriteSheetRect.width / spritesPerRow;
-        float spriteSelectionHeight = spriteSheetRect.height / spritesPerRow;
+        var spriteSelectionWidth = spriteSheetRect.width / spritesPerRow;
+        var spriteSelectionHeight = spriteSheetRect.height / spritesPerRow;
 
-        Vector2 gridPosition = GridConversion.ToVector(spriteSelection, spritesPerRow);
+        var gridPosition = GridConversion.ToVector(spriteSelection, spritesPerRow);
 
-        Rect sheetPosition = new Rect(
+        var sheetPosition = new Rect(
             spriteSheetRect.x + gridPosition.x * spriteSelectionWidth,
             spriteSheetRect.y + gridPosition.y * spriteSelectionHeight,
-            spriteSelectionWidth * (int)Mathf.Pow(2, textureZoom), spriteSelectionHeight * (int)Mathf.Pow(2, textureZoom));
+            spriteSelectionWidth * (int)Mathf.Pow(2, textureZoom),
+            spriteSelectionHeight * (int)Mathf.Pow(2, textureZoom));
 
         DrawRectangle(sheetPosition, selectionRectThickness, Color.white);
     }
 
     private void DrawPalletSelection()
     {
-        float palletSelectionWidth = palletRect.width / colorsPerRow;
-        float palletSelectionHeight = palletRect.height / palletTexture.height;
-        Vector2 gridPosition = GridConversion.ToVector(palletSelection, colorsPerRow);
+        var palletSelectionWidth = palletRect.width / colorsPerRow;
+        var palletSelectionHeight = palletRect.height / palletTexture.height;
+        var gridPosition = GridConversion.ToVector(palletSelection, colorsPerRow);
 
-        Rect palletPosition = new Rect(
+        var palletPosition = new Rect(
             palletRect.x + gridPosition.x * palletSelectionWidth,
             palletRect.y + gridPosition.y * palletSelectionHeight,
             palletSelectionWidth, palletSelectionHeight);
@@ -300,32 +388,31 @@ public class Pico8SpriteEditor : EditorWindow
         DrawRectangle(palletPosition, selectionRectThickness, Color.white);
     }
 
-    private void DrawTexture(Texture2D texture, Rect position, bool dim = false, Rect sourceRect = new Rect())
+    private void DrawTexture(Texture2D texture, Rect position, bool dim = false, Rect sourceRect = new())
     {
         if (sourceRect.width == 0)
         {
-            GUIStyle textureStyle = new GUIStyle { normal = { background = texture } };
+            var textureStyle = new GUIStyle { normal = { background = texture } };
             GUI.Label(position, GUIContent.none, textureStyle);
         }
         else
         {
-            float yInverted = texture.height - sourceRect.y - sourceRect.height;
+            var yInverted = texture.height - sourceRect.y - sourceRect.height;
 
-            float xMin = sourceRect.x / texture.width;
-            float xMax = (sourceRect.x + sourceRect.width) / texture.width;
+            var xMin = sourceRect.x / texture.width;
+            var xMax = (sourceRect.x + sourceRect.width) / texture.width;
 
-            float yMin = yInverted / texture.height;
-            float yMax = (yInverted + sourceRect.height) / texture.height;
+            var yMin = yInverted / texture.height;
+            var yMax = (yInverted + sourceRect.height) / texture.height;
 
-            Rect texCoords = new Rect(xMin, yMin, xMax - xMin, yMax - yMin);
+            var texCoords = new Rect(xMin, yMin, xMax - xMin, yMax - yMin);
             GUI.DrawTextureWithTexCoords(position, texture, texCoords, true);
         }
 
         if (dim)
         {
-
-            Color dimColor = new Color(0, 0, 0, 0.5f);
-            Color previousColor = GUI.color;
+            var dimColor = new Color(0, 0, 0, 0.5f);
+            var previousColor = GUI.color;
             GUI.color = dimColor;
             GUI.DrawTexture(position, EditorGUIUtility.whiteTexture);
             GUI.color = previousColor;
@@ -342,7 +429,7 @@ public class GridConversion
 
     public static Vector2 ToVector(int index, int gridWidth)
     {
-        Vector2 grid = Vector2.zero;
+        var grid = Vector2.zero;
         grid.x = index % gridWidth;
         grid.y = index / gridWidth;
         return grid;
@@ -350,8 +437,8 @@ public class GridConversion
 
     public static Rect ToRect(int index, int gridWidth, int width = 0, int height = 0)
     {
-        Vector2 v = ToVector(index, gridWidth);
-        Rect r = new Rect(v.x, v.y, width, height);
+        var v = ToVector(index, gridWidth);
+        var r = new Rect(v.x, v.y, width, height);
         return r;
     }
 }
